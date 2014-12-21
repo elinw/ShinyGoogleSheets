@@ -14,15 +14,17 @@ emptymatch<-"."
 ## the spreadsheets to analyze and other information. See ReadMe.md
 dataListUrl <- readLines("./datalistsource.txt", n =1)
 
-readgdatasetlist <- readGoogleSheet(dataListUrl)
-datasetList <- cleanGoogleTable(readgdatasetlist)
-oldnames <- colnames(datasetList)
-newnames <- c("timestamp", "courseId", "sheeturl", "title", "description")
-colnames(datasetList) <- newnames
-datasetList$alias <- gsub(" ", "_", paste0(datasetList$courseId, datasetList$title))
 
 shinyServer(function(input, output) {
-
+        readgdatasetlist <- readGoogleSheet(dataListUrl)
+        datasetList <- cleanGoogleTable(readgdatasetlist)
+        
+        oldnames <- colnames(datasetList)
+        newnames <- c("timestamp", "courseId", "sheeturl", "title", "description")
+        colnames(datasetList) <- newnames
+        datasetList$alias <- gsub(" ", "_", paste0(datasetList$courseId, datasetList$title))
+        
+        
         output$dataset <-renderUI({   
                 selectInput("dataset", "Select your data", choices = c(None=".", datasetList$courseId ), selected=".")
         }) 
@@ -34,26 +36,29 @@ shinyServer(function(input, output) {
          })
 
         getDatsetInfo<-function()
-         {
-                myrow <- datasetList[datasetList$courseId == input$dataset]
+         {                
+                myrow <- subset(datasetList, datasetList$courseId == input$dataset)
+  
                 # Check for duplicate names and use the first row with that name.
                 if (nrow(myrow) != 1 )
                 {
                        myrow<-myrow[1,]
                 }
                 datasetInfo<<-myrow
+
                 read1 <- readGoogleSheet(myrow$sheeturl)
                 datasetname <- cleanGoogleTable(read1)
-                
+              
                 
                  varnames<-colnames(datasetname)
                 # We need to strip out invalid characters and spaces
                 varnames<-sub("]","__", gsub(" ", "_", varnames))
                 varnames<-sub("[", "_", varnames, fixed = TRUE)
                 varnames<-sub("?", "", varnames, fixed = TRUE)
+                varnames<-gsub(",", "", varnames, fixed = TRUE)
                 colnames(datasetname)<-varnames
                 varnames<-varnames[varnames != "Timestamp"]
-                
+
                 ## Google seems to add some non ascii to the end of the last value in a factor               
                 convertNonAscii<-function(varname)
                 {
@@ -75,7 +80,7 @@ shinyServer(function(input, output) {
  
         output$dependent<-renderUI({
                 
-                if (!is.null(input$dataset) & !identical(input$dataset, emptymatch ))
+                if (!is.null(input$dataset) & !identical(input$dataset, emptymatch ) )
                 {
                         dataset<-input$dataset
                         
